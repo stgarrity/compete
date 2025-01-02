@@ -1,1 +1,1 @@
-# compete
+This is my capstone project for @timlee's LLM course
