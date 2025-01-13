@@ -1,7 +1,5 @@
 
 import asyncio
-# import copy
-# import chainlit as cl
 import os
 
 import dotenv
@@ -14,6 +12,8 @@ from llama_index.embeddings.openai import OpenAIEmbedding
 from llama_index.vector_stores.weaviate import WeaviateVectorStore
 import weaviate
 from weaviate.classes.init import Auth
+
+from prompts import SYSTEM_DETECTION_PROMPT, SYSTEM_COMPETITIVE_ANALYSIS_PROMPT
 
 dotenv.load_dotenv()
 
@@ -30,7 +30,7 @@ wcd_url = os.environ["WCD_URL"]
 wcd_api_key = os.environ["WCD_API_KEY"]
 
 weaviate_client = weaviate.connect_to_weaviate_cloud(
-    cluster_url=wcd_url, 
+    cluster_url=wcd_url,
     auth_credentials=Auth.api_key(wcd_api_key),
 )
 
@@ -67,7 +67,7 @@ async def main():
             # Split transcript into paragraphs
             paragraphs = transcript_text.split('\n')
             paragraphs = [p for p in paragraphs if p.strip()]  # Remove empty paragraphs
-            
+
             # Analyze progressively larger chunks of the transcript
             for i in range(len(paragraphs)):
                 # Create chunk containing paragraphs 0 through i
@@ -77,20 +77,11 @@ async def main():
 
 async def analyze_chunk(transcript, last_paragraph):
     history = []
-    history.append({"role": "system", "content": """
-                    You are a helpful assistant. 
-                    You are an expert on UserClouds, a privacy-aware infrastructure platform, and you help our sales team educate our customers effectively.
-                    Given this transcript of an ongoing conversation, decide if someone has recently (in the last 3-4 sentences) mentioned 
-                    a potential competitor to UserClouds. If so, respond with the competitor's name, otherwise respond with "no".
-                    Some obvious competitors are Privacera, OneTrust, Cyera, and Skyflow.
-                    To catch less obvious competitors, you should also look for questions about things like "how does UserClouds compare to X", 
-                    and "what are the differences between UserClouds and Y"?
-                    Only respond with a competitor's name or "no".
-                    """})
-    
+    history.append({"role": "system", "content": SYSTEM_DETECTION_PROMPT})
+
     history.append({"role": "user", "content": transcript})
     response = await client.chat.completions.create(messages=history, **model_kwargs)
-    
+
     print("***")
     print(last_paragraph)
     print(response.choices[0].message.content)
@@ -100,8 +91,12 @@ async def analyze_chunk(transcript, last_paragraph):
     response_text = response.choices[0].message.content.lower()
     if response_text != "no":
         chunks = retriever.retrieve(response_text)
-        for chunk in chunks:
-            print(chunk.text)
+        competitor_info = "\n".join(chunk.text for chunk in chunks)
+        history = []
+        history.append({"role": "system", "content": SYSTEM_COMPETITIVE_ANALYSIS_PROMPT})
+        history.append({"role": "user", "content": competitor_info})
+        response = await client.chat.completions.create(messages=history, **model_kwargs)
+        print(response.choices[0].message.content)
 
         print("\nCompetitor detected! Press Enter to continue...")
         input()
