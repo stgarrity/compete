@@ -1,3 +1,7 @@
 openai
-pythondotenv
+python-dotenv
 langsmith
+llama-index
+llama-index-vector-stores-weaviate
+llama-index-embeddings-openai
+weaviate

@@ -9,10 +9,11 @@ import openai
 
 from langsmith import traceable
 from langsmith.wrappers import wrap_openai
-# from llama_index.core import VectorStoreIndex
-# from llama_index.vector_stores.weaviate import WeaviateVectorStore
-# import weaviate
-# from weaviate.classes.init import Auth
+from llama_index.core import Settings,VectorStoreIndex
+from llama_index.embeddings.openai import OpenAIEmbedding
+from llama_index.vector_stores.weaviate import WeaviateVectorStore
+import weaviate
+from weaviate.classes.init import Auth
 
 dotenv.load_dotenv()
 
@@ -25,18 +26,21 @@ model_kwargs = {
     "max_tokens": 500
 }
 
-# wcd_url = os.environ["WCD_URL"]
-# wcd_api_key = os.environ["WCD_API_KEY"]
+wcd_url = os.environ["WCD_URL"]
+wcd_api_key = os.environ["WCD_API_KEY"]
 
-# weaviate_client = weaviate.connect_to_weaviate_cloud(
-#     cluster_url=wcd_url,                                    
-#     auth_credentials=Auth.api_key(wcd_api_key),
-# )
+weaviate_client = weaviate.connect_to_weaviate_cloud(
+    cluster_url=wcd_url,
+    auth_credentials=Auth.api_key(wcd_api_key),
+)
 
-# vector_store = WeaviateVectorStore(weaviate_client=weaviate_client, index_name="Tesla")
-# index = VectorStoreIndex.from_vector_store(vector_store)
-# query_engine = index.as_query_engine()
-# retriever = index.as_retriever()
+
+embed_model = OpenAIEmbedding(model="text-embedding-3-large")
+Settings.embed_model = embed_model
+vector_store = WeaviateVectorStore(weaviate_client=weaviate_client, index_name=os.environ["WCD_INDEX_NAME"])
+index = VectorStoreIndex.from_vector_store(vector_store)
+query_engine = index.as_query_engine()
+retriever = index.as_retriever()
 
 client = wrap_openai(openai.AsyncClient(api_key=api_key, base_url=endpoint_url))
 
@@ -95,6 +99,10 @@ async def analyze_chunk(transcript, last_paragraph):
     # If competitor detected, pause for keystroke
     response_text = response.choices[0].message.content.lower()
     if response_text != "no":
+        chunks = retriever.retrieve(response_text)
+        for chunk in chunks:
+            print(chunk.text)
+
         print("\nCompetitor detected! Press Enter to continue...")
         input()
 
