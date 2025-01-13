@@ -30,7 +30,7 @@ wcd_url = os.environ["WCD_URL"]
 wcd_api_key = os.environ["WCD_API_KEY"]
 
 weaviate_client = weaviate.connect_to_weaviate_cloud(
-    cluster_url=wcd_url,
+    cluster_url=wcd_url, 
     auth_credentials=Auth.api_key(wcd_api_key),
 )
 
@@ -109,40 +109,3 @@ async def analyze_chunk(transcript, last_paragraph):
 
 if __name__ == "__main__":
     asyncio.run(main())
-    
-# @traceable
-# @cl.on_message
-# async def on_message(message: cl.Message):
-#     # Maintain an array of messages in the user session
-#     message_history = cl.user_session.get("message_history", [])
-#     message_history.append({"role": "user", "content": message.content})
-
-#     response_message = cl.Message(content="")
-#     await response_message.send()
-
-#     rag_history = copy.deepcopy(message_history)
-#     rag_history.append({"role": "system", "content": "Your only job is to identify if you need extra information from the Tesla Cyber Truck's Owners Manual to answer the last message in this thread. Respond with only one word, yes or no."})
-    
-#     rag = await client.chat.completions.create(messages=rag_history, **model_kwargs)
-#     if rag.choices[0].message.content.lower() == "yes":
-#         print("retrieving data")
-#         chunks = retriever.retrieve(message.content)
-        
-#         context = ""
-#         for chunk in chunks:
-#             context += chunk.text
-
-#         message_history[len(message_history)-1]["content"] += context
-
-#     # Pass in the full message history for each request
-#     stream = await client.chat.completions.create(messages=message_history, 
-#                                                 stream=True, **model_kwargs)
-#     async for part in stream:
-#         if token := part.choices[0].delta.content or "":
-#             await response_message.stream_token(token)
-
-#     await response_message.update()
-
-#     # Record the AI's response in the history
-#     message_history.append({"role": "assistant", "content": response_message.content})
-#     cl.user_session.set("message_history", message_history)
